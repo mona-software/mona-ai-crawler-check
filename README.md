@@ -1,60 +1,88 @@
 # mona-ai-crawler-check
 
-**Soi xem AI có đọc được website của anh chị không.**
-*Check whether AI crawlers (GPTBot, ClaudeBot, Gemini, Perplexity…) can actually read your site.*
+Checks whether AI crawlers such as GPTBot, ClaudeBot and PerplexityBot are allowed to fetch a web page and whether the page gives them readable content.
 
-Đây là công cụ GEO mở tách ra từ bộ [MONA GEO OS](https://mona.media/mona-geo-os/). Muốn được ChatGPT hay Gemini nhắc tên, việc đầu tiên là site phải cho tụi nó vào đọc được đã. Tool này kiểm đúng chuyện đó rồi báo cáo chỗ nào đang chặn.
+It reports `PASS`, `WARN` or `FAIL` for each check, with a suggested fix. It is part of [MONA GEO OS](https://mona.media/mona-geo-os/).
 
-## Vì sao có bộ này
+## What it checks
 
-Rất nhiều doanh nghiệp đổ tiền làm nội dung nhưng lại vô tình khoá cửa AI: `robots.txt` chặn GPTBot, trang render bằng JavaScript nên bot thấy trang rỗng, không có `llms.txt`, không có structured data. Kết quả là AI không có gì để trích, khách hỏi thì AI nói tên đối thủ. Tool này soi bốn thứ đó trong một lần chạy, cho biết PASS/WARN/FAIL từng mục kèm cách sửa.
+- **robots.txt**, per AI user-agent token: `GPTBot`, `OAI-SearchBot`, `ChatGPT-User`, `ClaudeBot`, `Claude-Web`, `Google-Extended`, `PerplexityBot`, `CCBot`, `Bytespider`, `Amazonbot`, `meta-externalagent`. A token blocked for the requested path is `FAIL`. A missing `robots.txt` counts as allowed.
+- **Server-rendered content**: the page must return 2xx with visible text in the initial HTML. A page with fewer than 80 visible characters plus scripts (a JavaScript-only shell) is `FAIL`.
+- **llms.txt**: `/llms.txt` exists at the site root (HEAD, falling back to GET). Missing is `WARN`.
+- **JSON-LD**: the page contains structured data. Missing is `WARN`.
 
-## Nó kiểm gì
+The JSON report also records whether the page has a `<title>`, a meta description and an `h1`.
 
-- **robots.txt** cho từng bot AI: GPTBot, OAI-SearchBot, ChatGPT-User, ClaudeBot, Claude-Web, Google-Extended, PerplexityBot, CCBot, Bytespider, Amazonbot, meta-externalagent… — bot nào bị chặn path nào.
-- **Nội dung server-side**: trang có chữ thật để AI đọc, hay chỉ là "vỏ JavaScript" rỗng (`<div id=root>` + script).
-- **llms.txt**: site đã có file cho model đọc chưa.
-- **Structured data**: có JSON-LD để AI hiểu đúng thực thể không.
+## Install
 
-## Chạy thử
+Requires Python 3.9+. Standard library only.
 
 ```bash
 git clone https://github.com/mona-software/mona-ai-crawler-check
 cd mona-ai-crawler-check
-python examples/demo.py
-
-# Soi site thật:
-python -m mona-ai-crawler-check https://your-site.com
-python -m mona-ai-crawler-check https://your-site.com --json     # bản máy đọc
+pip install -e .
 ```
+
+## Usage
+
+```bash
+mona-ai-crawler-check https://your-site.com
+mona-ai-crawler-check https://your-site.com/some/page --json
+python -m mona_ai_crawler_check your-site.com     # https:// is assumed when omitted
+```
+
+Exit codes: `0` overall `PASS` or `WARN`, `1` at least one `FAIL`, `2` the URL is invalid or could not be fetched.
+
+Offline demo with the bundled fixtures (run after `pip install -e .`):
+
+```bash
+python examples/demo.py
+```
+
+```
++----------------------------+--------+----------------------------------+
+| CHECK                      | STATUS | DETAIL                           |
++----------------------------+--------+----------------------------------+
+| Overall                    | WARN   | https://example.com              |
+| robots: GPTBot             | PASS   | Allowed for requested path       |
+| ...                        |        |                                  |
+| robots: meta-externalagent | PASS   | Allowed for requested path       |
+| Server content             | PASS   | 171 visible characters           |
+| llms.txt                   | WARN   | /llms.txt was not found          |
+| JSON-LD                    | WARN   | No JSON-LD structured data found |
++----------------------------+--------+----------------------------------+
+Fixes:
+- llms.txt: Generate and publish /llms.txt; you can use mona-llms-txt.
+- JSON-LD: Add relevant schema.org JSON-LD to the server-rendered HTML.
+```
+
+`--json` prints `url`, `status`, `robots` (one entry per bot), `content`, `llms_txt`, `json_ld`, `metadata` (`title`, `meta_description`, `h1`) and `issues`. Each check has `name`, `status`, `detail` and `fix`.
+
+## Library use
 
 ```python
 from mona_ai_crawler_check import check_site
 
 report = check_site("https://your-site.com")
-print(report.render_text())      # bảng PASS/WARN/FAIL + gợi ý sửa
+print(report.render_text())   # table plus suggested fixes
+print(report.to_json())
 ```
 
-`check_site(url, fetcher=...)` cho phép inject fetcher để test hoặc cache. Các hàm con dùng thẳng được: `parse_robots`, `bot_allowed`, `analyze_content`, `check_llms_txt`.
+`check_site(url, fetcher=...)` accepts any object with `get` and `head` methods, for tests or caching. The building blocks `parse_robots`, `bot_allowed`, `analyze_content` and `check_llms_txt` can also be imported from the package.
+
+When run against a live site, the tool requests only `/robots.txt`, `/llms.txt` and the given page.
+
+## Development
 
 ```bash
-pip install -e . && pytest -q    # 43 test, chạy offline, không gọi mạng trong test
+pip install -e ".[test]"
+pytest -q
 ```
 
-Python >=3.9, ưu tiên thư viện chuẩn.
+Tests run offline against hand-written fixtures in `fixtures/`.
 
-## Dữ liệu
+## License
 
-Fixture test (`robots.txt`, HTML giàu chữ, HTML vỏ-JS rỗng) đều **tự soạn**. Phần tải mạng tách riêng và inject được, test chạy hoàn toàn offline. Khi chạy thật, tool chỉ đọc site của chính anh chị — không thu thập gì ngoài.
+MIT, see [LICENSE](LICENSE).
 
-## Tuyên ngôn thị trường cùng tiến
-
-MONA là một công ty phần mềm, chuyển đổi số, chuyển đổi AI, nhưng trên hết, MONA là một công ty dịch vụ B2B, là người hưởng lợi trực tiếp từ việc: **những doanh nghiệp Việt càng thành công, MONA càng có lợi**. Thị trường đi xuống, đi chậm, công nghệ yếu mới chính là điểm giết chết các cơ hội làm ăn trong tương lai của MONA. Nên, hơn ai hết, MONA mong muốn, và MONA thật sự can thiệp vào việc giúp đỡ anh chị thành công. Và chuyển đổi AI là chìa khóa cho sự thành công đó của chúng ta.
-
-## Từ đâu ra
-
-Một mảnh của [MONA GEO OS](https://mona.media/mona-geo-os/). Soi xong thấy thiếu `llms.txt` thì dựng bằng [mona-llms-txt](https://github.com/mona-software/mona-llms-txt). Toàn bộ kho mở của MONA ở [MONA Open](https://mona.media/mona-open/); chuyên mục test model ở [MONA AI Lab](https://mona.media/ai-lab/); tác giả [Khánh Hùng — Founder The MONA](https://mona.media/profile/vy-nguyen-khanh-hung/).
-
-Giấy phép: [MIT](LICENSE).
-
-**`mona-ai-crawler-check` là sản phẩm của MONA Software, thành viên The MONA Group.**
+**`mona-ai-crawler-check` is a product of MONA Software, a member of The MONA Group.**
