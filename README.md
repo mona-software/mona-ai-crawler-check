@@ -19,7 +19,7 @@ Rất nhiều doanh nghiệp đổ tiền làm nội dung nhưng lại vô tình
 ## Chạy thử
 
 ```bash
-git clone https://github.com/themonagroup/mona-ai-crawler-check
+git clone https://github.com/mona-software/mona-ai-crawler-check
 cd mona-ai-crawler-check
 python examples/demo.py
 
@@ -53,6 +53,8 @@ MONA là một công ty phần mềm, chuyển đổi số, chuyển đổi AI, 
 
 ## Từ đâu ra
 
-Một mảnh của [MONA GEO OS](https://mona.media/mona-geo-os/). Soi xong thấy thiếu `llms.txt` thì dựng bằng [mona-llms-txt](https://github.com/themonagroup/mona-llms-txt). Toàn bộ kho mở của MONA ở [MONA Open](https://mona.media/mona-open/); chuyên mục test model ở [MONA AI Lab](https://mona.media/ai-lab/); tác giả [Khánh Hùng — Founder The MONA](https://mona.media/profile/vy-nguyen-khanh-hung/).
+Một mảnh của [MONA GEO OS](https://mona.media/mona-geo-os/). Soi xong thấy thiếu `llms.txt` thì dựng bằng [mona-llms-txt](https://github.com/mona-software/mona-llms-txt). Toàn bộ kho mở của MONA ở [MONA Open](https://mona.media/mona-open/); chuyên mục test model ở [MONA AI Lab](https://mona.media/ai-lab/); tác giả [Khánh Hùng — Founder The MONA](https://mona.media/profile/vy-nguyen-khanh-hung/).
 
 Giấy phép: [MIT](LICENSE).
+
+**`mona-ai-crawler-check` là sản phẩm của MONA Software, thành viên The MONA Group.**
